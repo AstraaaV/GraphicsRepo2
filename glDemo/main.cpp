@@ -1,20 +1,33 @@
 
 #include "core.h"
-
-using namespace std;
-
+#include <cmath>
+#include "MyShapes.h"
+#include <random>
+#include "glm/ext/vector_float2.hpp"
+#include "glm/ext/vector_float4.hpp"
 
 // global variables
+std::mt19937 engine;
+std::uniform_real_distribution<float> range(-1.0f, 1.0f);
+std::uniform_real_distribution<float> colourRange(0.0f, 1.0f);
+std::uniform_real_distribution<float> sizeRange(3.0f, 10.0f);
 
-// Example exture object
-GLuint playerTexture;
-
+std::vector<glm::vec2> vertexCoords;
+std::vector<glm::vec4> vertexColours;
+std::vector<float> pointSizes;
 
 // Window size
 const unsigned int initWidth = 512;
 const unsigned int initHeight = 512;
 
-// Function prototypes
+// Pi
+const float M_PI = 3.14f;
+
+float tankX = 0.0f, tankY = 0.0f; // Tanks' pos
+float tankOri = 0.0f; // Tank orientation
+float tankSpeed = 0.1f; // Tank movement speed
+float rotSpeed = 5.0f; // Tank rotation speed
+
 void renderScene();
 void resizeWindow(GLFWwindow* window, int width, int height);
 void keyboardHandler(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -26,7 +39,7 @@ int main() {
 	//
 	// 1. Initialisation
 	//
-	
+
 
 	// Initialise glfw and setup window
 	glfwInit();
@@ -47,7 +60,7 @@ int main() {
 		return -1;
 	}
 	glfwMakeContextCurrent(window);
-	
+
 
 	// Set callback functions to handle different events
 	glfwSetFramebufferSizeCallback(window, resizeWindow); // resize window callback
@@ -57,7 +70,7 @@ int main() {
 	// Initialise glew
 	glewInit();
 
-	
+
 	// Setup window's initial size
 	resizeWindow(window, initWidth, initHeight);
 
@@ -66,55 +79,24 @@ int main() {
 
 
 	//
-	// Setup textures
-	//
-
-	// Load image file from disk
-	auto textureImageFile = string("Assets\\Textures\\player1_ship.png");
-	FIBITMAP* bitmap = FreeImage_Load(FIF_PNG, textureImageFile.c_str(), BMP_DEFAULT);
-
-	if (bitmap) {
-
-		// If image loaded, setup new texture object in OpenGL
-		glGenTextures(1, &playerTexture); // can create more than 1!
-		
-		if (playerTexture) {
-
-			glBindTexture(GL_TEXTURE_2D, playerTexture);
-
-			// Setup texture image properties
-			glTexImage2D(
-				GL_TEXTURE_2D,
-				0,
-				GL_RGBA,
-				FreeImage_GetWidth(bitmap),
-				FreeImage_GetHeight(bitmap),
-				0,
-				GL_BGRA,
-				GL_UNSIGNED_BYTE,
-				FreeImage_GetBits(bitmap));
-
-			// Setup texture filter and wrap properties
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		}
-
-		// Once the texture has been setup, the image data is copied into OpenGL.  We no longer need the originally loaded image
-		FreeImage_Unload(bitmap);
-	}
-	else {
-
-		cout << "Error loading image!" << endl;
-	}
-
-
-
-	//
 	// 2. Main loop
 	// 
-	
+
+	std::random_device rd;
+	engine = std::mt19937(rd());
+
+	int numPoints = 100;
+	vertexCoords = std::vector<glm::vec2>(numPoints, glm::vec2(0.0f, 0.0f));
+	vertexColours = std::vector<glm::vec4>(numPoints, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+	pointSizes = std::vector<float>(numPoints, 5.0f);
+
+	for (int i = 0; i < numPoints; i++)
+	{
+		vertexCoords[i] = glm::vec2(range(engine), range(engine));
+		vertexColours[i] = glm::vec4(colourRange(engine), colourRange(engine), colourRange(engine), 1.0f);
+		pointSizes[i] = sizeRange(engine);
+	}
+
 
 	// Loop while program is not terminated.
 	while (!glfwWindowShouldClose(window)) {
@@ -133,36 +115,39 @@ int main() {
 	return 0;
 }
 
-
-
 // renderScene - function to render the current scene
 void renderScene()
 {
 	// Clear the rendering window
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	glBegin(GL_POINTS);
+	for (int i = 0; i < vertexCoords.size(); i++)
+	{
+		glPointSize(pointSizes[i]);
+		glColor3f(vertexColours[i].r, vertexColours[i].g, vertexColours[i].b);
+		glVertex2f(vertexCoords[i].x, vertexCoords[i].y);
+	}
+
 	// Render objects here...
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, playerTexture);
+	//drawPolygon(0.0f, 0.0f, 3, 0.5f); // Triangle
+	//drawPolygon(-0.5, 0.5f, 4, 0.3f); // Square
+	//drawPolygon(0.5f, -0.5f, 6, 0.4f); // Hexagon
 
-	glBegin(GL_QUADS);
+	// Render Star
+	//drawStar(0.0f, 0.0f, 0.2f, 0.5f, 5); // Five pointed star
 
-	glTexCoord2f(0.0f, 1.0f);
-	glVertex2f(-0.5f, 0.5f);
+	// Tank one
+	//drawTank(tankX, tankY, tankOri, 1.0f, 0.0f, 0.0f);
 
-	glTexCoord2f(1.0f, 1.0f);
-	glVertex2f(0.5f, 0.5f);
+	// Tank two
+	//drawTank(-0.5f, -0.5f, 180.0f, 0.0f, 0.0f, 1.0f);
 
-	glTexCoord2f(1.0f, 0.0f);
-	glVertex2f(0.5f, -0.5f);
+	//drawBlendedRectangles();
 
-	glTexCoord2f(0.0f, 0.0f);
-	glVertex2f(-0.5f, -0.5f);
+	//MyShapes::drawSemiCircleStudio();
 
 	glEnd();
-
-	glDisable(GL_BLEND);
-	glDisable(GL_TEXTURE_2D);
 }
 
 
@@ -170,24 +155,45 @@ void renderScene()
 void resizeWindow(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);		// Draw into entire window
+
+	glMatrixMode(GL_PROJECTION); // Switch to projection view
+	glLoadIdentity(); // Reset previous projection
+	glOrtho(-1, 1, -1, 1, -1, 1); // Sets coord system
+
+	glMatrixMode(GL_MODELVIEW); // Switch back to model view
 }
 
 
 // Function to call to handle keyboard input
 void keyboardHandler(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	if (action == GLFW_PRESS) {
+	if (action == GLFW_PRESS || action == GLFW_REPEAT) {
 
+		// repeat is for continuous movement
 		// check which key was pressed...
 		switch (key)
 		{
-			case GLFW_KEY_ESCAPE:
-				glfwSetWindowShouldClose(window, true);
-				break;
+		case GLFW_KEY_W: // forward movement
+			tankX += tankSpeed * cos(tankOri * M_PI / 180.0f);
+			tankY += tankSpeed * sin(tankOri * M_PI / 180.0f);
+			break;
+		case GLFW_KEY_S: // backward movement
+			tankX -= tankSpeed * cos(tankOri * M_PI / 180.0f);
+			tankY -= tankSpeed * sin(tankOri * M_PI / 180.0f);
+			break;
+		case GLFW_KEY_A: // rotate left
+			tankOri += rotSpeed;
+			break;
+		case GLFW_KEY_D: // rotate right
+			tankOri -= rotSpeed;
+			break;
+		case GLFW_KEY_ESCAPE:
+			glfwSetWindowShouldClose(window, true);
+			break;
 
-			default:
-			{
-			}
+		default:
+		{
+		}
 		}
 	}
 	else if (action == GLFW_RELEASE) {
